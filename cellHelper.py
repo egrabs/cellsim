@@ -28,8 +28,8 @@ def exportAsOpenSCAD(cellList, aspectRatio):
 
         rotationalAxis = cross(vector(0,0,1), cell.axis)
 
-        angleToRotateRad = acos(dot(vector(0,0,1), norm(cell.axis))) #python returns rads
-        angleToRotateDeg = (angleToRotateRad / pi) * 180 #but openscad does rotation in degrees
+        angleToRotateRad = acos(dot(vector(0,0,1), norm(cell.axis)))  # python returns rads
+        angleToRotateDeg = (angleToRotateRad / pi) * 180  # but openscad does rotation in degrees
 
         fh.write("translate([%f, %f, %f]) {\n" % (xPos, yPos, zPos))
         fh.write("    rotate(v=[%f, %f, %f], a=%f) {\n" % (rotationalAxis[0], rotationalAxis[1], rotationalAxis[2], angleToRotateDeg))
@@ -92,13 +92,13 @@ def checkOverlap(currCell, cellList, temp, overlapAmnt):
 
 '''Computes the radius of gyration for the given cell network'''
 def computeRadGy(cellList):
-    xTot = yTot = zTot = 0 #total sums of x, y, and z coordinates
+    xTot = yTot = zTot = 0  # total sums of x, y, and z coordinates
     for cel in cellList:
         xTot += cel.pos[0]
         yTot += cel.pos[1]
         zTot += cel.pos[2]
-    numCells = float(len(cellList)) #number of cells as a float to enable floating point division
-    xMean = xTot / numCells #mean x, y and z positions
+    numCells = float(len(cellList))  # number of cells as a float to enable floating point division
+    xMean = xTot / numCells  # mean x, y and z positions
     yMean = yTot / numCells
     zMean = zTot / numCells
 

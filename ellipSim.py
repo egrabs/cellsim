@@ -16,7 +16,7 @@ __status__ = "Development"
 cellList = [] #a list of all the cell objects that currently exist
 
 #NOTE unused currently, no need for reproduction probablility
-doublingProb = 0.50 #for now we use a hard-coded doubling probability of 95%
+doublingProb = 0.95 #for now we use a hard-coded doubling probability of 95%
 
 workbook = xls.Workbook(sys.argv[1])
 worksheet = workbook.add_worksheet()
@@ -27,9 +27,11 @@ worksheet = workbook.add_worksheet()
 #arrow(axis = vector(0,0,1), length = 25, color = color.blue)
 
 print("Welcome to the cell simulator v2.0")
-numGens = int(input("Please input the number of cell generations you would like to generate: ")) #grab the num gens from user
+# numGens = int(input("Please input the number of cell generations you would like to generate: ")) #grab the num gens from user
 
-overlapParam = float(input("Please input the maximum amount of overlap permitted before reproduction fails: ")) #grab the overlap parameter from the user
+numGens = 15
+
+# overlapParam = float(input("Please input the maximum amount of overlap permitted before reproduction fails: ")) #grab the overlap parameter from the user
 
 diam = 5.0 #for now all cells will have a diameter of 5, the length will increase each generation if in ellipsoidal mode, in sphere mode it will remain constant
 
@@ -55,23 +57,32 @@ row = 0
 col = 0
 
 worksheet.write(row,col, "generation #")
-for q in range(10):
-    worksheet.write(row,col+1+q, "Cumulative Overlap Trial %d" % (q+1))
+for q in range(20):
+    if q % 2 == 0:
+        worksheet.write(row,col+1+q, "Cumulative Overlap Trial %d" % (q+1))
+    else:
+        worksheet.write(row,col+1+q, "Total Rejected Moves Trial %d" % (q+1))
 
 row += 1
 
-overlap_params = [0.15, 0.30, 0.50, 0.70, 0.85, 0.95]
+overlap_params = [0.10, 0.30, 0.50, 0.70, 0.90]
 
-aspRat = 1.5
+aspRats = [1.1, 1.2, 1.3, 1.4, 1.5]
+
+param_pairs = [(ov_param, aspRat) for ov_param in overlap_params for aspRat in aspRats]
 
 #HACK get rid of the aspect ratio loop and instead loop over the trial number
 
 #for aspRat in aspectList: #loop over the aspect ratios, to perform a trial at each aspect ratio.
 
-for overlap_parameter in overlap_params:
+for overlapParam, aspRat in param_pairs:
 
-    worksheet.write(row, col+12, 'Overlap Parameter: ')
-    worksheet.write(row, col+13, overlap_parameter)
+    worksheet.write(row, col+24, 'Overlap Parameter: ')
+    worksheet.write(row, col+25, overlapParam)
+    worksheet.write(row+1, col+24, 'Aspect Ratio: ')
+    worksheet.write(row+1, col+25, aspRat)
+
+    prev_row = row
 
     for trialNumber in range(10):
 
@@ -86,7 +97,11 @@ for overlap_parameter in overlap_params:
 
             cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
 
+            totalRejectedMoves = sum([zell.failedSpawns for zell in cellList])
+
             worksheet.write(row, col+1, cumulativeOverlap)
+
+            worksheet.write(row, col+2, totalRejectedMoves)
 
             row += 1
             # if i != 1:
@@ -138,8 +153,8 @@ for overlap_parameter in overlap_params:
 
         temp = []
         cellList = [] #if doing multiple trials, we need to reset these arrays before starting the next trial
-        col += 1 #move the excel coordinate one column over for the next trial
-        row = 1 #row coordinate goes back to just below the columnt titles
+        col += 2 #move the excel coordinate one column over for the next trial
+        row = prev_row #row coordinate goes back to just below the columnt titles
 
     row += numGens + 2
     col = 0
