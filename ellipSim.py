@@ -4,6 +4,8 @@ from cell import *
 from cellHelper import *
 import xlsxwriter as xls
 import sys
+import timeit
+
 
 __author__ = "Elyes Graba"
 __credits__ = ["Peter Yunker", "Shane Jacobeen"]
@@ -65,15 +67,36 @@ for q in range(20):
 
 row += 1
 
-overlap_params = [0.10, 0.30, 0.50, 0.70, 0.90]
+overlap_params = [0.10] # [0.10, 0.30, 0.50, 0.70, 0.90]
 
-aspRats = [1.1, 1.2, 1.3, 1.4, 1.5]
+aspRats = [1.1] # [1.1, 1.2, 1.3, 1.4, 1.5]
 
 param_pairs = [(ov_param, aspRat) for ov_param in overlap_params for aspRat in aspRats]
+
+print "Param Pairs", param_pairs
 
 #HACK get rid of the aspect ratio loop and instead loop over the trial number
 
 #for aspRat in aspectList: #loop over the aspect ratios, to perform a trial at each aspect ratio.
+
+def create_cell_string(cell):
+    x,y,z = cell.pos
+    axial_x, axial_y, axial_z = cell.axis
+    phi = acos(axial_z / mag(cell.axis))
+    xy_plane_mag = sqrt(axial_x**2.0 + axial_y**2.0)
+    theta = asin(axial_y / xy_plane_mag)
+    gen_num = cell.generation
+    overlap_amnt = sum(cell.overlaps)
+    write_string = '%f, %f, %f, %f, %f, %f, %d' % (x, y, z, theta, phi, overlap_amnt, gen_num)
+    return write_string
+
+def output_cell_file(cell_list, filename):
+    fh = open(filename, 'w')
+    for cell in cell_list:
+        cell_string = create_cell_string(cell)
+        fh.write(cell_string)
+        fh.write('\n')
+    fh.close()
 
 for overlapParam, aspRat in param_pairs:
 
@@ -89,6 +112,8 @@ for overlapParam, aspRat in param_pairs:
         overlaps = 0 #to count the number of overlap cases
         rootCell = RootCell(vector(0,0,0), aspRat*diamArray[0], diamArray[0], vector(1, 2, 3), None, 0) #The original cell, note that it has generation = 0
         cellList.append(rootCell) #put the root cell in the cellList
+
+        start_time = timeit.default_timer()
 
         for i in iterationList: #iterate over the number of gens
 
@@ -150,6 +175,16 @@ for overlapParam, aspRat in param_pairs:
                 cellList.append(cel) #add all the newly created daughters in temp to the main cellList
 
         #exportAsOpenSCAD(cellList, aspectList[0])
+
+        cell_file_name = "overlap_" + str(overlapParam) + "_asprat_" + str(aspRat) +'.txt'
+
+        output_cell_file(cellList, cell_file_name)
+
+        print "Number of Cells:", len(cellList)
+
+        end_time = timeit.default_timer()
+
+        print "Elapsed time:", end_time - start_time
 
         temp = []
         cellList = [] #if doing multiple trials, we need to reset these arrays before starting the next trial
