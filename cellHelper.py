@@ -1,5 +1,6 @@
 from visual import *
 from math import *
+from cell import *
 import os
 
 __author__ = "Elyes Graba"
@@ -40,6 +41,33 @@ def exportAsOpenSCAD(cellList, aspectRatio):
         fh.write("}\n")
 
     fh.close()
+
+
+def construct_network_from_file(filename, length, diameter):
+    fh = open(filename, 'r')
+    line = fh.readline()
+    cells = []
+    while line != '':
+        x,y,z,theta,phi,generation = line.split(',')
+        x = float(x)
+        y = float(y)
+        z = float(z)
+        theta = float(theta)
+        phi = float(phi)
+        generation = int(generation)
+        pos = vector(x,y,z)
+        axial_x = 1.*sin(phi)*cos(theta)
+        axial_y = 1.*sin(phi)*sin(theta)
+        axial_z = 1.*cos(phi)
+        axis = vector(axial_x,axial_y,axial_z)
+        # whoops, didn't include parent cells in the .csv files so reconstructed clusters will have no notion
+        # of who is whose parent, will fix if it's ever relevant
+        cell = Cell(pos=pos, length=length, diameter=diameter, axis=axis, parent=None, generation=generation)
+        cells.append(cell)
+        line = fh.readline()
+    fh.close()
+    return cells
+
 
 
 
