@@ -69,6 +69,45 @@ def construct_network_from_file(filename, length, diameter):
     return cells
 
 
+def create_cell_string(cell):
+    x,y,z = cell.pos
+    axial_x, axial_y, axial_z = cell.axis
+    phi = acos(axial_z / mag(cell.axis))
+    xy_plane_mag = sqrt(axial_x**2.0 + axial_y**2.0)
+    theta = asin(axial_y / xy_plane_mag)
+    gen_num = cell.generation
+    overlap_amnt = sum(cell.overlaps)
+    write_string = '%f, %f, %f, %f, %f, %f, %d' % (x, y, z, theta, phi, overlap_amnt, gen_num)
+    return write_string
+
+
+def output_cell_file(cell_list, filename):
+    fh = open(filename, 'w')
+    for cell in cell_list:
+        cell_string = create_cell_string(cell)
+        fh.write(cell_string)
+        fh.write('\n')
+    fh.close()
+
+
+def build_aspect_ratio_distributions(filenames):
+    distributions = []
+    for filename in filenames:
+        fh = open(filename, 'r')
+        header = fh.readline()
+        line = fh.readline()
+        distribution = []
+        while line != '':
+            distribution.append(float(line))
+            line = fh.readline()
+        distributions.append(distribution)
+        fh.close()
+    return distributions
+
+
+def select_aspect_ratio(distribution):
+    import random
+    return random.choice(distribution)
 
 
 '''Removes the cells above a certain z coordinate : ceil'''
