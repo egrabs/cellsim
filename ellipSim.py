@@ -87,10 +87,12 @@ for overlapParam in overlap_params:
 
             row += 1
 
-            length = select_aspect_ratio(distribution)*diam #follows from aspRat = length / diam
             temp = []  # holds the newly created cells until the current round of reproduction is over
 
             for cel in cellList: #for each cell currently in the cellList
+
+
+                length = select_aspect_ratio(distribution)*diam #follows from aspRat = length / diam
 
                 variedTheta = computeVariedTheta(theta, thetaVariance) #generate a slight random variance in theta to reduce unintended patterns
                 (cellPos, direc) = getDaughterPos(cel, variedTheta, length)
