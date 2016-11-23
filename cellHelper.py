@@ -2,6 +2,7 @@ from visual import *
 from math import *
 from cell import *
 import os
+import random
 
 __author__ = "Elyes Graba"
 __credits__ = ["Peter Yunker", "Shane Jacobeen"]
@@ -106,7 +107,6 @@ def build_aspect_ratio_distributions(filenames):
 
 
 def select_aspect_ratio(distribution):
-    import random
     return random.choice(distribution)
 
 

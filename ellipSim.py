@@ -41,9 +41,9 @@ col = 0
 
 worksheet.write(row,col, "generation #")
 for q in range(100):
-    worksheet.write(row,3*q+1, "Cumulative Overlap Trial %d" % (q))
-    worksheet.write(row,3*q+2, "Total Rejected Moves Trial %d" % (q))
-    worksheet.write(row,3*q + 3, "Cumulative Squared Overlap Trial %d" % (q))
+    worksheet.write(row,3*q+1, "Cumulative Overlap Trial %d" % (q+1))
+    worksheet.write(row,3*q+2, "Total Rejected Moves Trial %d" % (q+1))
+    worksheet.write(row,3*q + 3, "Cumulative Squared Overlap Trial %d" % (q+1))
 
 row += 1
 
@@ -59,9 +59,9 @@ for overlapParam in overlap_params:
 
     prev_row = row
 
-    for trialNumber in range(100):
+    for trialNumber in range(1, 101):
 
-        if trialNumber == 50:
+        if trialNumber == 51:
             distribution = AR_distributions[1]
 
         overlaps = 0 #to count the number of overlap cases
@@ -70,7 +70,7 @@ for overlapParam in overlap_params:
 
         for i in iterationList: #iterate over the number of gens
 
-            if trialNumber == 0: #only need to write the generation numbers on the first run-through
+            if trialNumber == 1: #only need to write the generation numbers on the first run-through
                 worksheet.write(row, col, i)
 
             cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
