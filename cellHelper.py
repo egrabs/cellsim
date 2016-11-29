@@ -44,42 +44,54 @@ def exportAsOpenSCAD(cellList, aspectRatio):
     fh.close()
 
 
-def construct_network_from_file(filename, length, diameter):
+def constructNetworkFromDataFile(filename):
     fh = open(filename, 'r')
+    headers = fh.readline()
     line = fh.readline()
     cells = []
     while line != '':
-        x,y,z,theta,phi,generation = line.split(',')
+        x,y,z,axial_x,axial_y,axial_z,overlap_amnt,aspect_ratio,length,diameter,generation = line.split(',')
         x = float(x)
         y = float(y)
         z = float(z)
-        theta = float(theta)
-        phi = float(phi)
+        axial_x = float(axial_x)
+        axial_y = float(axial_y)
+        axial_z = float(axial_z)
         generation = int(generation)
         pos = vector(x,y,z)
-        axial_x = 1.*sin(phi)*cos(theta)
-        axial_y = 1.*sin(phi)*sin(theta)
-        axial_z = 1.*cos(phi)
+        length = float(length)
+        diameter = float(diameter)
+        overlap_amnt = float(overlap_amnt)
+        # axial_x = 1.*sin(phi)*cos(theta)
+        # axial_y = 1.*sin(phi)*sin(theta)
+        # axial_z = 1.*cos(phi)
         axis = vector(axial_x,axial_y,axial_z)
         # whoops, didn't include parent cells in the .csv files so reconstructed clusters will have no notion
         # of who is whose parent, will fix if it's ever relevant
         cell = Cell(pos=pos, length=length, diameter=diameter, axis=axis, parent=None, generation=generation)
+        cell.overlaps = [overlap_amnt]
         cells.append(cell)
         line = fh.readline()
     fh.close()
     return cells
 
 
-def create_cell_string(cell):
-    x,y,z = cell.pos
-    axial_x, axial_y, axial_z = cell.axis
-    phi = acos(axial_z / mag(cell.axis))
-    xy_plane_mag = sqrt(axial_x**2.0 + axial_y**2.0)
-    theta = asin(axial_y / xy_plane_mag)
-    gen_num = cell.generation
-    overlap_amnt = sum(cell.overlaps)
-    write_string = '%f, %f, %f, %f, %f, %f, %d' % (x, y, z, theta, phi, overlap_amnt, gen_num)
-    return write_string
+def create_cell_string(cell, write_label_string=False):
+    if not write_label_string:
+        x,y,z = cell.pos
+        axial_x, axial_y, axial_z = cell.axis
+        # phi = acos(axial_z / mag(cell.axis))
+        # xy_plane_mag = sqrt(axial_x**2.0 + axial_y**2.0)
+        # theta = asin(axial_y / xy_plane_mag)
+        gen_num = cell.generation
+        overlap_amnt = sum(cell.overlaps)
+        length = float(cell.length)
+        diameter = float(cell.diameter)
+        aspect_ratio =  length / diameter
+        write_label_string = '%f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %d' % (x, y, z, axial_x, axial_y, axial_z, overlap_amnt, aspect_ratio, length, diameter, gen_num)
+    else:
+        write_label_string="X,Y,Z,AXIAL_X,AXIAL_Y,AXIAL_Z,OVERLAP_AMNT,ASPECT_RATIO,LENGTH,DIAMETER,GENERATION_NUMBER"
+    return write_label_string
 
 
 def output_cell_file(cell_list, filename):
