@@ -23,7 +23,7 @@ class Cell(object):
         self.children = []
         self.sphereMesh = []
         self.fillSpheres()
-        #self.createGraphic(generation)
+        self.createGraphic(generation)
         self.overlaps = []
         self.failedSpawns = 0
 

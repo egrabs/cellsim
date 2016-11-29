@@ -1,6 +1,7 @@
 from visual import *
 from math import *
 import os
+import random
 
 __author__ = "Elyes Graba"
 __credits__ = ["Peter Yunker", "Shane Jacobeen"]
@@ -42,6 +43,55 @@ def exportAsOpenSCAD(cellList, aspectRatio):
     fh.close()
 
 
+def constructNetworkFromDataFile(filename):
+    fh = open(filename, 'r')
+    headers = fh.readline()
+    line = fh.readline()
+    cells = []
+    while line != '':
+        x,y,z,theta,phi,overlap_amnt,aspect_ratio,length,diameter,generation = line.split(',')
+        x = float(x)
+        y = float(y)
+        z = float(z)
+        theta = float(theta)
+        phi = float(phi)
+        generation = int(generation)
+        pos = vector(x,y,z)
+        length = float(length)
+        diameter = float(diameter)
+        overlap_amnt = float(overlap_amnt)
+        axial_x = 1.*sin(phi)*cos(theta)
+        axial_y = 1.*sin(phi)*sin(theta)
+        axial_z = 1.*cos(phi)
+        axis = vector(axial_x,axial_y,axial_z)
+        # whoops, didn't include parent cells in the .csv files so reconstructed clusters will have no notion
+        # of who is whose parent, will fix if it's ever relevant
+        cell = Cell(pos=pos, length=length, diameter=diameter, axis=axis, parent=None, generation=generation)
+        cell.overlaps = [overlap_amnt]
+        cells.append(cell)
+        line = fh.readline()
+    fh.close()
+    return cells
+
+
+def build_aspect_ratio_distributions(filenames):
+    distributions = []
+    for filename in filenames:
+        fh = open(filename, 'r')
+        header = fh.readline()
+        line = fh.readline()
+        distribution = []
+        while line != '':
+            distribution.append(float(line))
+            line = fh.readline()
+        distributions.append(distribution)
+        fh.close()
+    return distributions
+
+
+def select_aspect_ratio(distribution):
+    return random.choice(distribution)
+
 
 '''Removes the cells above a certain z coordinate : ceil'''
 def removeCellsAbove(ceil, cellList):
@@ -51,6 +101,7 @@ def removeCellsAbove(ceil, cellList):
                 cellList.remove(daughter)
             cellList.remove(cel)
 
+
 '''Removes the cells below a certain z coordinate : floor'''
 def removeCellsBelow(floor, cellList):
     for cel in cellList:
@@ -58,6 +109,38 @@ def removeCellsBelow(floor, cellList):
             for daughter in cel.children:
                 cellList.remove(daughter)
             cellList.remove(cel)
+
+
+def create_cell_string(cell, write_label_string=False):
+    if not write_label_string:
+        x,y,z = cell.pos
+        axial_x, axial_y, axial_z = cell.axis
+        phi = acos(axial_z / mag(cell.axis))
+        xy_plane_mag = sqrt(axial_x**2.0 + axial_y**2.0)
+        theta = asin(axial_y / xy_plane_mag)
+        gen_num = cell.generation
+        overlap_amnt = sum(cell.overlaps)
+        length = float(cell.length)
+        diameter = float(cell.diameter)
+        aspect_ratio =  length / diameter
+        write_label_string = '%f, %f, %f, %f, %f, %f, %f, %f, %f, %d' % (x, y, z, theta, phi, overlap_amnt, aspect_ratio, length, diameter, gen_num)
+    else:
+        write_label_string="X,Y,Z,THETA,PHI,OVERLAP_AMNT,ASPECT_RATIO,LENGTH,DIAMETER,GENERATION_NUMBER"
+    return write_label_string
+
+
+def output_cell_data_file(cell_list, filename):
+    fh = open(filename, 'w')
+    # Get the column header names
+    cell_string = create_cell_string(None, True)
+    fh.write(cell_string)
+    fh.write("\n")
+    for cell in cell_list:
+        cell_string = create_cell_string(cell)
+        fh.write(cell_string)
+        fh.write('\n')
+    fh.close()
+
 
 '''checks if two cells overlap more than permitted by the specified overlapAmnt'''
 def overlaps(cellOne, cellTwo, overlapAmnt):
@@ -151,10 +234,7 @@ def getDaughterPos(cel, theta, length):
     parent cell's axis vector with any random vector will yield a result in the plane perpendicular to the axis. So simply generate a vector
     with 3 random components, cross it with the parent's axis, and the resulting vector will be the desired random radial direction'''
 
-
-    if (len(cel.children) == 0 and cel.generation != 0 and random.random() < 0.80):                  #there was a 50% probability here for this style of reproduction -- don't forget
-
-
+    if (len(cel.children) == 0 and cel.generation != 0 and random.random() < 0.80):
         childAxis = norm(cel.axis)
 
         dispLength = 0.95*((cel.length / 2.0) + (length / 2.0))
