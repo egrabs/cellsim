@@ -4,7 +4,7 @@ from cell import *
 from cellHelper import *
 import xlsxwriter as xls
 import sys
-import timeit
+from timeit import default_timer
 
 
 __author__ = "Elyes Graba"
@@ -60,6 +60,8 @@ for overlapParam in overlap_params:
     prev_row = row
 
     for trialNumber in range(1, 101):
+
+        start_time = default_timer()
 
         if trialNumber == 51:
             distribution = AR_distributions[1]
@@ -122,6 +124,11 @@ for overlapParam in overlap_params:
         cellList = [] #if doing multiple trials, we need to reset these arrays before starting the next trial
         col += 3
         row = prev_row #row coordinate goes back to just below the columnt titles
+
+        end_time = default_timer()
+
+        print "trial " + str(trialNumber) + " complete of 100"
+        print "with an elapsed time of: " + str(end_time - start_time) + " seconds\n"
 
     row += numGens + 2
     col = 0
