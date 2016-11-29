@@ -2,6 +2,7 @@ from visual import *
 from math import *
 import os
 import random
+from cell import *
 
 __author__ = "Elyes Graba"
 __credits__ = ["Peter Yunker", "Shane Jacobeen"]
