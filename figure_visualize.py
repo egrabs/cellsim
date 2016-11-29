@@ -2,6 +2,6 @@ from visual import *
 from cell import *
 from cellHelper import *
 
-filename = "cluster_for_figure_3.csv"
+filename = "working_figure_data.csv"
 
 network_elements = constructNetworkFromDataFile(filename)
