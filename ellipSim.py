@@ -3,6 +3,7 @@ from math import *
 from cell import *
 from cellHelper import *
 import xlsxwriter as xls
+from multiprocessing import Process
 
 __author__ = "Elyes Graba"
 __credits__ = ["Peter Yunker", "Shane Jacobeen"]
@@ -10,6 +11,7 @@ __version__ = "3.0.1"
 __maintainer__ = "Elyes Graba"
 __email__ = "elyesgraba@gatech.edu"
 __status__ = "Development"
+
 
 #Globals
 cellList = [] #a list of all the cell objects that currently exist
@@ -97,6 +99,9 @@ for trial in range(1, 21):
         for cel in temp: #once the reproduction cycle is complete,
             cellList.append(cel) #add all the newly created daughters in temp to the main cellList
 
+    # basically just want to hang on keyboard input to give myself a chance to look at and rotate the network
+
+    key = scene.kb.getkey() 
 
     save = raw_input("should we save this one? (y/n)")
     if save == 'y':
@@ -105,5 +110,9 @@ for trial in range(1, 21):
     temp = []
     cellList = [] #if doing multiple trials, we need to reset these arrays before starting the next trial
 
-exit() #if this is uncommented the program will exit when it is finished running, you wont have time to view the visual representation of the cluster
+    clearScene(scene)
+
+    wait(1)
+
+#if this is uncommented the program will exit when it is finished running, you wont have time to view the visual representation of the cluster
 #it's mostly only used when collecting data and not using the visual mode
