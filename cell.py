@@ -10,7 +10,6 @@ __status__ = "Development"
 
 class Cell(object):
 
-
     '''constructor'''
     def __init__(self, pos, length, diameter, axis, parent, generation):
         self.pos = pos

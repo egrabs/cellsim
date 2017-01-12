@@ -16,6 +16,9 @@ __status__ = "Development"
 #Globals
 cellList = [] #a list of all the cell objects that currently exist
 
+# if sim_mode is True, lightweight, data-oriented cell representations will be used and visual output will be supressed
+sim_mode = True 
+
 #NOTE unused currently, no need for reproduction probablility
 doublingProb = 0.50 #for now we use a hard-coded doubling probability
 

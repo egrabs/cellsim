@@ -3,6 +3,7 @@ from math import *
 import os
 import random
 from cell import *
+import numpy as np
 
 __author__ = "Elyes Graba"
 __credits__ = ["Peter Yunker", "Shane Jacobeen"]
@@ -104,6 +105,36 @@ def constructNetworkFromDataFileOld(filename):
         line = fh.readline()
     fh.close()
     return cells
+
+
+def construct_lightweight_cell_repr(pos, length, diameter, axis):
+    # pos, length, diameter, axis, parent, generation
+    try:
+        assert(type(pos) is vector
+                and type(length) is float
+                and type(diameter) is float
+                and type(axis) is vector)
+    except AssertionError:
+        print "Improper Attribute type"
+        return None
+    x,y,z = pos
+    ax_x, ax_y, ax_z = axis
+    cell_arr = np.array([x, y, z, length, diameter, ax_x, ax_y, ax_z])
+    return cell_arr
+
+
+class distribution_generator(object):
+
+    def __init__(self, mean, stdev):
+        self.mean = mean
+        self.stdev = stdev
+
+    def poll(self):
+        return random.gauss(self.mean, self.stdev)
+
+
+def build_distribution_generator(mean, stdev):
+    return distribution_generator(mean, stdev)
 
 
 def build_aspect_ratio_distributions(filenames):
