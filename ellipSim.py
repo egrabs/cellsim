@@ -4,6 +4,7 @@ from cell import *
 from cellHelper import *
 import xlsxwriter as xls
 from multiprocessing import Process
+import numpy as np
 
 __author__ = "Elyes Graba"
 __credits__ = ["Peter Yunker", "Shane Jacobeen"]
@@ -15,9 +16,6 @@ __status__ = "Development"
 
 #Globals
 cellList = [] #a list of all the cell objects that currently exist
-
-# if sim_mode is True, lightweight, data-oriented cell representations will be used and visual output will be supressed
-sim_mode = True 
 
 #NOTE unused currently, no need for reproduction probablility
 doublingProb = 0.50 #for now we use a hard-coded doubling probability
@@ -43,79 +41,123 @@ thetaVariance = 0.1 #this is the fraction by which theta may vary at maximum (th
 
 overlaps = 0 #to count the number of overlap cases
 
-distribution_fns = ['week_1_ARs.csv', 'week_8_ARs.csv']
+# if sim_mode is True, lightweight, data-oriented cell representations will be used and visual output will be supressed
+sim_mode = True if raw_input("Run in sim mode? (faster with no visual rendering) enter y/n") == 'y' else False
 
-distributions = build_aspect_ratio_distributions(distribution_fns)
 
-distribution = distributions[0]
+#aspect ratio disitrbution means
+AR_dist_means = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+#aspect ratio distribution standard deviations
+AR_dist_STDEVs = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
 
-for trial in range(1, 21):
+# angle of attachment distribution means
+AoA_means = ['pi / 6.', 'pi / 5.', 'pi / 4.', 'pi / 3.', 'pi / 2.']
+# angle of attachment distribution standard deviations will be computed "live"
+# by multiplying these fractional values times the actual AoA value
+AoA_fractional_STDEVs = [0.0, 0.05, 0.10, 0.15, 0.20]
 
-    rootCell = RootCell(vector(0,0,0), select_aspect_ratio(distribution)*diam, diam, vector(1, 2, 3), None, 0) #The original cell, note that it has generation = 0
-    cellList.append(rootCell) #put the root cell in the cellList
+cumulative_squared_overlap_thresholds = [653., 603504., 4095444.]
 
-    for i in iterationList: #iterate over the number of gens
+workbook = xls.Workbook("overlap_threshold_data.xlsx")
+worksheet = workbook.add_worksheet()
 
-        cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
+row = 0
+col = 0
 
-        #if i != 1:
-            #currText.visible = False
-        #currText = text(text='Generation\n' + str(i), align='center', height=10, width=10,pos=vector(50,20,20),depth=-0.3, color=color.green)
-        #follows from aspRat = length / diam
-        temp = [] #holds the newly created cells until the current round of reproduction is over
+worksheet.write(row, col, "Angle of Attachment")
+worksheet.write(row, col+1, "Aspect Ratio")
+worksheet.write(row, col+2, "Number of Cells")
+worksheet.write(row, col+3, "Cumulative Overlap")
+worksheet.write(row, col+4, "Cumulative Squared Overlap")
+worksheet.write(row, col+5, "Max overlap of Single Cell")
 
-        #if random.random() <= 0.10:
-            #calling this method switches the pole from which the root cell spawns
-            #rootCell.switchGrowthDirection()
+row += 1
 
-        for cel in cellList: #for each cell currently in the cellList
+# for trial in range(1, 21):
 
-            length = select_aspect_ratio(distribution)*diam 
+    # for now, we want homogenous properties
 
-            #rate(10) #for visual purposes, slow the rate down to see the network grow in real time
+AoA_STDEV = 0.0
+AR_STDEV = 0.0
 
-            #if random.uniform(0, 1) < doublingProb: #if a randomly generated float in [0,1] is less than the doubling probability, then double
+for mean_AR in AR_dist_means:
+    for mean_AoA in AoA_means:
 
-            variedTheta = computeVariedTheta(theta, thetaVariance) #generate a slight random variance in theta to reduce unintended patterns
-            (cellPos, direc) = getDaughterPos(cel, variedTheta, length)
+        mean_AoA = eval(mean_AoA)
 
-            #colTemp = cel.graphical.color
-            #cel.graphical.color=color.magenta
-            #wait(1)
+        AoA_gen = build_distribution_generator(mean_AoA, AoA_STDEV)
+        AR_gen = build_distribution_generator(mean_AR, AR_STDEV)
 
-            if (cellPos,direc) != (None, None):
+        generation = 0
 
-                newCell = Cell(cellPos, length, diam, direc, cel, i) #create the daughter
+        if sim_mode:
+            rootCell = construct_lightweight_cell_repr(vector(0,0,0), AR_gen.poll()*diam, diam, vector(1,2,3))
+        else:
+            rootCell = RootCell(vector(0,0,0), AR_gen.poll()*diam, diam, vector(1, 2, 3), None, 0) #The original cell, note that it has generation = 0
 
-                ovFail = checkOverlap(newCell, cellList, temp, overlapParam) #check if the daughter overlaps with any existing cells
+        cellList.append(rootCell) #put the root cell in the cellList
 
-                if (not ovFail): #if there is NOT an overlap above the chosen threshold, allow the daughter to exist
-                    cel.children.append(newCell) #add it to the children list of its parent
-                    temp.append(newCell) #add it to the temporary storage list
+        checker_index = 0
 
-                else:
-                    cel.failedSpawns += 1
-                    newCell.graphical.visible = False #make the daughter disappear if it overlapped too much with an existing cell
-                    #for sphr in newCell.sphereMesh:
-                        #sphr.graphical.visible = False
+        current_treshold = cumulative_squared_overlap_thresholds[checker_index]
 
-        for cel in temp: #once the reproduction cycle is complete,
-            cellList.append(cel) #add all the newly created daughters in temp to the main cellList
+        not_done = True
 
-    # basically just want to hang on keyboard input to give myself a chance to look at and rotate the network
+        while not_done: #iterate until the max overlap threshold is reached
 
-    key = scene.kb.getkey() 
+            generation += 1
 
-    save = raw_input("should we save this one? (y/n)")
-    if save == 'y':
-        output_cell_data_file(cellList, "cluster_for_figure_" + str(trial) + ".csv")
+            cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
+            cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList])
 
-    temp = []
-    cellList = [] #if doing multiple trials, we need to reset these arrays before starting the next trial
 
-    clearScene(scene)
+            temp = [] #holds the newly created cells until the current round of reproduction is over
 
-    wait(1)
+            for cel in cellList: #for each cell currently in the cellList
+
+                length = AR_gen.poll()*diam 
+
+                variedTheta = AoA_gen.poll()
+                (cellPos, direc) = getDaughterPos(cel, variedTheta, length)
+
+                if (cellPos,direc) != (None, None):
+
+                    if sim_mode:
+                        newCell = construct_lightweight_cell_repr(cellPos, length)
+                    else:
+                        newCell = Cell(cellPos, length, diam, direc, cel, generation) #create the daughter
+
+                    ovFail = checkOverlap(newCell, cellList, temp, overlapParam) #check if the daughter overlaps with any existing cells
+
+                    if (not ovFail): #if there is NOT an overlap above the chosen threshold, allow the daughter to exist
+                        if not sim_mode:
+                            cel.children.append(newCell) #add it to the children list of its parent
+                        temp.append(newCell) #add it to the temporary storage list
+
+                    else:
+                        cel.failedSpawns += 1
+                        if not sim_mode:
+                            newCell.graphical.visible = False #make the daughter disappear if it overlapped too much with an existing cell
+
+                if cumulativeSquaredOverlap >= current_treshold:
+                    checker_index += 1
+                    if checker_index == len(cumulative_squared_overlap_thresholds):
+                        not_done = False
+                    current_treshold = cumulative_squared_overlap_thresholds[checker_index]
+                    worksheet.write(row, col, mean_AoA)
+                    worksheet.write(row, col+1, mean_AR)
+                    worksheet.write(row, col+2, len(cellList) + len(temp))
+                    worksheet.write(row, col+3, cumulativeOverlap)
+                    worksheet.write(row, col+4, cumulativeSquaredOverlap)
+                    worksheet.write(row, col+5, max([sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps), sum(max(temp, key=lambda cell: sum(cell.overlaps)).overlaps)]))
+                    row += 1
+
+            for cel in temp: #once the reproduction cycle is complete,
+                cellList.append(cel) #add all the newly created daughters in temp to the main cellList
+
+
+        temp = []
+        cellList = [] #if doing multiple trials, we need to reset these arrays before starting the next trial
 
 #if this is uncommented the program will exit when it is finished running, you wont have time to view the visual representation of the cluster
 #it's mostly only used when collecting data and not using the visual mode
