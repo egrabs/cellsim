@@ -130,7 +130,9 @@ class distribution_generator(object):
         self.stdev = stdev
 
     def poll(self):
-        return random.gauss(self.mean, self.stdev)
+        from random import gauss
+        result = gauss(self.mean, self.stdev)
+        return result
 
 
 def build_distribution_generator(mean, stdev):

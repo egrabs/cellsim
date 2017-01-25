@@ -5,6 +5,8 @@ from cellHelper import *
 import xlsxwriter as xls
 from multiprocessing import Process
 import numpy as np
+import random
+from random import gauss
 
 __author__ = "Elyes Graba"
 __credits__ = ["Peter Yunker", "Shane Jacobeen"]
@@ -136,21 +138,31 @@ for mean_AR in AR_dist_means:
 
                     else:
                         cel.failedSpawns += 1
-                        if not sim_mode:
-                            newCell.graphical.visible = False #make the daughter disappear if it overlapped too much with an existing cell
+                        # if not sim_mode:
+                            # newCell.graphical.visible = False #make the daughter disappear if it overlapped too much with an existing cell
+
+                cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
+                cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList])
 
                 if cumulativeSquaredOverlap >= current_treshold:
                     checker_index += 1
                     if checker_index == len(cumulative_squared_overlap_thresholds):
                         not_done = False
-                    current_treshold = cumulative_squared_overlap_thresholds[checker_index]
-                    worksheet.write(row, col, mean_AoA)
-                    worksheet.write(row, col+1, mean_AR)
-                    worksheet.write(row, col+2, len(cellList) + len(temp))
-                    worksheet.write(row, col+3, cumulativeOverlap)
-                    worksheet.write(row, col+4, cumulativeSquaredOverlap)
-                    worksheet.write(row, col+5, max([sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps), sum(max(temp, key=lambda cell: sum(cell.overlaps)).overlaps)]))
-                    row += 1
+                        break
+                    else:
+                        print "CHECKER INDEX:", checker_index
+                        print "length of threshold array:", len(cumulative_squared_overlap_thresholds)
+                        current_treshold = cumulative_squared_overlap_thresholds[checker_index]
+                        worksheet.write(row, col, mean_AoA)
+                        worksheet.write(row, col+1, mean_AR)
+                        worksheet.write(row, col+2, len(cellList) + len(temp))
+                        worksheet.write(row, col+3, cumulativeOverlap)
+                        worksheet.write(row, col+4, cumulativeSquaredOverlap)
+                        if len(temp) > 0:
+                            worksheet.write(row, col+5, max([sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps), sum(max(temp, key=lambda cell: sum(cell.overlaps)).overlaps)]))
+                        else:
+                            worksheet.write(row, col+5, sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps))
+                        row += 1
 
             for cel in temp: #once the reproduction cycle is complete,
                 cellList.append(cel) #add all the newly created daughters in temp to the main cellList
@@ -158,6 +170,10 @@ for mean_AR in AR_dist_means:
 
         temp = []
         cellList = [] #if doing multiple trials, we need to reset these arrays before starting the next trial
+
+workbook.close()
+
+sys.exit()
 
 #if this is uncommented the program will exit when it is finished running, you wont have time to view the visual representation of the cluster
 #it's mostly only used when collecting data and not using the visual mode
