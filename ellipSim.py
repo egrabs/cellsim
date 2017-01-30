@@ -58,26 +58,15 @@ AoA_means = ['pi / 6.', 'pi / 5.', 'pi / 4.', 'pi / 3.', 'pi / 2.']
 # by multiplying these fractional values times the actual AoA value
 AoA_fractional_STDEVs = [0.0, 0.05, 0.10, 0.15, 0.20]
 
-cumulative_squared_overlap_thresholds = [653., 603504., 4095444.]
+overlap_squared_threshold = 603504.
 
-workbook = xls.Workbook("overlap_threshold_data.xlsx")
-worksheet = workbook.add_worksheet()
 
 row = 0
 col = 0
 
-worksheet.write(row, col, "Angle of Attachment")
-worksheet.write(row, col+1, "Aspect Ratio")
-worksheet.write(row, col+2, "Number of Cells")
-worksheet.write(row, col+3, "Cumulative Overlap")
-worksheet.write(row, col+4, "Cumulative Squared Overlap")
-worksheet.write(row, col+5, "Max overlap of Single Cell")
+
 
 row += 1
-
-# for trial in range(1, 21):
-
-    # for now, we want homogenous properties
 
 AoA_STDEV = 0.0
 AR_STDEV = 0.0
@@ -85,91 +74,121 @@ AR_STDEV = 0.0
 for mean_AR in AR_dist_means:
     for mean_AoA in AoA_means:
 
+        text_AoA = mean_AoA
+
         mean_AoA = eval(mean_AoA)
 
         AoA_gen = build_distribution_generator(mean_AoA, AoA_STDEV)
         AR_gen = build_distribution_generator(mean_AR, AR_STDEV)
 
-        generation = 0
+        for trial_num in range(20):
 
-        if sim_mode:
-            rootCell = construct_lightweight_cell_repr(vector(0,0,0), AR_gen.poll()*diam, diam, vector(1,2,3))
-        else:
-            rootCell = RootCell(vector(0,0,0), AR_gen.poll()*diam, diam, vector(1, 2, 3), None, 0) #The original cell, note that it has generation = 0
+            worksheet.write(row, col, "Cell #")
+            worksheet.write(row, col+1, "Angle of Attachment")
+            worksheet.write(row, col+2, "Aspect Ratio")
+            worksheet.write(row, col+3, "Number of Cells")
+            worksheet.write(row, col+4, "Cumulative Overlap")
+            worksheet.write(row, col+5, "Cumulative Squared Overlap")
+            worksheet.write(row, col+6, "Max overlap of Single Cell")
+            worksheet.write(row, col+7, "Generation #")
 
-        cellList.append(rootCell) #put the root cell in the cellList
+            worksheet.write(row, col, curr_numcells - 1)  # the cell number (rootcell is 0)
+            worksheet.write(row, col+1, text_AoA)
+            worksheet.write(row, col+2, mean_AR)
+            worksheet.write(row, col+3, curr_numcells)
+            worksheet.write(row, col+4, cumulativeOverlap)
+            worksheet.write(row, col+5, cumulativeSquaredOverlap)
+            worksheet.write(row, col+7, generation)
 
-        checker_index = 0
+            generation = 0
 
-        current_treshold = cumulative_squared_overlap_thresholds[checker_index]
+            if sim_mode:
+                rootCell = construct_lightweight_cell_repr(vector(0,0,0), AR_gen.poll()*diam, diam, vector(1,2,3))
+            else:
+                rootCell = RootCell(vector(0,0,0), AR_gen.poll()*diam, diam, vector(1, 2, 3), None, 0) #The original cell, note that it has generation = 0
 
-        not_done = True
+            cellList.append(rootCell) #put the root cell in the cellList
 
-        while not_done: #iterate until the max overlap threshold is reached
+            not_done = True
 
-            generation += 1
+            while not_done: #iterate until the max overlap threshold is reached
 
-            cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
-            cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList])
+                generation += 1
+
+                temp = [] #holds the newly created cells until the current round of reproduction is over
+
+                for cel in cellList: #for each cell currently in the cellList
 
 
-            temp = [] #holds the newly created cells until the current round of reproduction is over
+                    length = AR_gen.poll()*diam 
 
-            for cel in cellList: #for each cell currently in the cellList
+                    variedTheta = AoA_gen.poll()
+                    (cellPos, direc) = getDaughterPos(cel, variedTheta, length)
 
-                length = AR_gen.poll()*diam 
+                    if (cellPos,direc) != (None, None):
 
-                variedTheta = AoA_gen.poll()
-                (cellPos, direc) = getDaughterPos(cel, variedTheta, length)
-
-                if (cellPos,direc) != (None, None):
-
-                    if sim_mode:
-                        newCell = construct_lightweight_cell_repr(cellPos, length)
-                    else:
-                        newCell = Cell(cellPos, length, diam, direc, cel, generation) #create the daughter
-
-                    ovFail = checkOverlap(newCell, cellList, temp, overlapParam) #check if the daughter overlaps with any existing cells
-
-                    if (not ovFail): #if there is NOT an overlap above the chosen threshold, allow the daughter to exist
-                        if not sim_mode:
-                            cel.children.append(newCell) #add it to the children list of its parent
-                        temp.append(newCell) #add it to the temporary storage list
-
-                    else:
-                        cel.failedSpawns += 1
-                        # if not sim_mode:
-                            # newCell.graphical.visible = False #make the daughter disappear if it overlapped too much with an existing cell
-
-                cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
-                cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList])
-
-                if cumulativeSquaredOverlap >= current_treshold:
-                    checker_index += 1
-                    if checker_index == len(cumulative_squared_overlap_thresholds):
-                        not_done = False
-                        break
-                    else:
-                        print "CHECKER INDEX:", checker_index
-                        print "length of threshold array:", len(cumulative_squared_overlap_thresholds)
-                        current_treshold = cumulative_squared_overlap_thresholds[checker_index]
-                        worksheet.write(row, col, mean_AoA)
-                        worksheet.write(row, col+1, mean_AR)
-                        worksheet.write(row, col+2, len(cellList) + len(temp))
-                        worksheet.write(row, col+3, cumulativeOverlap)
-                        worksheet.write(row, col+4, cumulativeSquaredOverlap)
-                        if len(temp) > 0:
-                            worksheet.write(row, col+5, max([sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps), sum(max(temp, key=lambda cell: sum(cell.overlaps)).overlaps)]))
+                        if sim_mode:
+                            newCell = construct_lightweight_cell_repr(cellPos, length)
                         else:
-                            worksheet.write(row, col+5, sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps))
-                        row += 1
+                            newCell = Cell(cellPos, length, diam, direc, cel, generation) #create the daughter
 
-            for cel in temp: #once the reproduction cycle is complete,
-                cellList.append(cel) #add all the newly created daughters in temp to the main cellList
+                        ovFail = checkOverlap(newCell, cellList, temp, overlapParam) #check if the daughter overlaps with any existing cells
+
+                        if (not ovFail): #if there is NOT an overlap above the chosen threshold, allow the daughter to exist
+                            if not sim_mode:
+                                cel.children.append(newCell) #add it to the children list of its parent
+                            temp.append(newCell) #add it to the temporary storage list
+
+                            cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
+                            cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList])
+                            curr_numcells = len(cellList) + len(temp)
+                            worksheet.write(row, col, curr_numcells - 1)  # the cell number (rootcell is 0)
+                            worksheet.write(row, col+1, text_AoA)
+                            worksheet.write(row, col+2, mean_AR)
+                            worksheet.write(row, col+3, curr_numcells)
+                            worksheet.write(row, col+4, cumulativeOverlap)
+                            worksheet.write(row, col+5, cumulativeSquaredOverlap)
+                            worksheet.write(row, col+7, generation)
+                            if len(temp) > 0:
+                                worksheet.write(row, col+6, max([sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps), sum(max(temp, key=lambda cell: sum(cell.overlaps)).overlaps)]))
+                            else:
+                                worksheet.write(row, col+6, sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps))
+                            row += 1
+
+                        else:
+                            cel.failedSpawns += 1
+                            # if not sim_mode:
+                                # newCell.graphical.visible = False #make the daughter disappear if it overlapped too much with an existing cell
+
+                    cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
+                    cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList])
+
+                    if cumulativeSquaredOverlap >= current_treshold:
+                        checker_index += 1
+                        if checker_index == len(cumulative_squared_overlap_thresholds):
+                            not_done = False
+                            break
+                        else:
+                            print "CHECKER INDEX:", checker_index
+                            print "length of threshold array:", len(cumulative_squared_overlap_thresholds)
+                            current_treshold = cumulative_squared_overlap_thresholds[checker_index]
+                            worksheet.write(row, col, mean_AoA)
+                            worksheet.write(row, col+1, mean_AR)
+                            worksheet.write(row, col+2, len(cellList) + len(temp))
+                            worksheet.write(row, col+3, cumulativeOverlap)
+                            worksheet.write(row, col+4, cumulativeSquaredOverlap)
+                            if len(temp) > 0:
+                                worksheet.write(row, col+5, max([sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps), sum(max(temp, key=lambda cell: sum(cell.overlaps)).overlaps)]))
+                            else:
+                                worksheet.write(row, col+5, sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps))
+                            row += 1
+
+                for cel in temp: #once the reproduction cycle is complete,
+                    cellList.append(cel) #add all the newly created daughters in temp to the main cellList
 
 
-        temp = []
-        cellList = [] #if doing multiple trials, we need to reset these arrays before starting the next trial
+            temp = []
+            cellList = [] #if doing multiple trials, we need to reset these arrays before starting the next trial
 
 workbook.close()
 
