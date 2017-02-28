@@ -7,6 +7,7 @@ from multiprocessing import Process
 import numpy as np
 import random
 from random import gauss
+import sys
 
 __author__ = "Elyes Graba"
 __credits__ = ["Peter Yunker", "Shane Jacobeen"]
@@ -22,15 +23,7 @@ cellList = [] #a list of all the cell objects that currently exist
 #NOTE unused currently, no need for reproduction probablility
 doublingProb = 0.50 #for now we use a hard-coded doubling probability
 
-#arrows meant to graphically represent x,y, and z axes
-#arrow(axis = vector(1,0,0), length = 25, color = color.blue)
-#arrow(axis = vector(0,1,0), length = 25, color = color.blue)
-#arrow(axis = vector(0,0,1), length = 25, color = color.blue)
-
 print("Welcome to the cell simulator v2.0")
-# numGens = int(input("Please input the number of cell generations you would like to generate: ")) #grab the num gens from user
-
-numGens = 3
 
 overlapParam = 0.50  # float(input("Please input the maximum amount of overlap permitted before reproduction fails: ")) #grab the overlap parameter from the user
 
@@ -39,12 +32,11 @@ diam = 5.0 #for now all cells will have a diameter of 5, the length will increas
 iterationList = [i for i in range(1, numGens + 1)] #Use this method of looping to assign the cell generations
 
 theta = pi / 4 #this defines the acceptable angles that daughter cells can spawn from
-thetaVariance = 0.1 #this is the fraction by which theta may vary at maximum (theta = theta +- random(-1,1)*thetaVariance*theta)
 
 overlaps = 0 #to count the number of overlap cases
 
 # if sim_mode is True, lightweight, data-oriented cell representations will be used and visual output will be supressed
-sim_mode = True if raw_input("Run in sim mode? (faster with no visual rendering) enter y/n") == 'y' else False
+sim_mode = True if raw_input("Run in sim mode? (faster with no visual rendering) enter y/n: ") == 'y' else False
 
 
 #aspect ratio disitrbution means
@@ -53,20 +45,13 @@ AR_dist_means = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
 AR_dist_STDEVs = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
 
 # angle of attachment distribution means
-AoA_means = ['pi / 6.', 'pi / 5.', 'pi / 4.', 'pi / 3.', 'pi / 2.']
+AoA_means = ['pi/6.', 'pi/5.', 'pi/4.', 'pi/3.', 'pi/2.']
 # angle of attachment distribution standard deviations will be computed "live"
 # by multiplying these fractional values times the actual AoA value
 AoA_fractional_STDEVs = [0.0, 0.05, 0.10, 0.15, 0.20]
 
+# taken from averages at 12 generations with AR = 1.5 and AoA = pi / 4.
 overlap_squared_threshold = 603504.
-
-
-row = 0
-col = 0
-
-
-
-row += 1
 
 AoA_STDEV = 0.0
 AR_STDEV = 0.0
@@ -81,24 +66,13 @@ for mean_AR in AR_dist_means:
         AoA_gen = build_distribution_generator(mean_AoA, AoA_STDEV)
         AR_gen = build_distribution_generator(mean_AR, AR_STDEV)
 
-        for trial_num in range(20):
+        for trial_num in range(1,101):
 
-            worksheet.write(row, col, "Cell #")
-            worksheet.write(row, col+1, "Angle of Attachment")
-            worksheet.write(row, col+2, "Aspect Ratio")
-            worksheet.write(row, col+3, "Number of Cells")
-            worksheet.write(row, col+4, "Cumulative Overlap")
-            worksheet.write(row, col+5, "Cumulative Squared Overlap")
-            worksheet.write(row, col+6, "Max overlap of Single Cell")
-            worksheet.write(row, col+7, "Generation #")
+            csv_name = 'AR_%f_AoA_%f_trial_%d.csv' % (mean_AR, mean_AoA, trial_num)
 
-            worksheet.write(row, col, curr_numcells - 1)  # the cell number (rootcell is 0)
-            worksheet.write(row, col+1, text_AoA)
-            worksheet.write(row, col+2, mean_AR)
-            worksheet.write(row, col+3, curr_numcells)
-            worksheet.write(row, col+4, cumulativeOverlap)
-            worksheet.write(row, col+5, cumulativeSquaredOverlap)
-            worksheet.write(row, col+7, generation)
+            fh = open(csv_name, 'w')
+
+            fh.write('cell_#,angle_of_attachment,aspect_ratio,number_of_cells,cumulative_overlap,cumulative_squared_overlap,max_overlap_of_single_cell,generation_#\n')
 
             generation = 0
 
@@ -109,16 +83,19 @@ for mean_AR in AR_dist_means:
 
             cellList.append(rootCell) #put the root cell in the cellList
 
-            not_done = True
 
-            while not_done: #iterate until the max overlap threshold is reached
+            initial_case = '0,%f,%f,1,0,0,0,0\n' % (mean_AoA, mean_AR)
+            fh.write(initial_case)
+
+            done = False
+
+            while not done: #iterate until the max overlap threshold is reached
 
                 generation += 1
 
                 temp = [] #holds the newly created cells until the current round of reproduction is over
 
                 for cel in cellList: #for each cell currently in the cellList
-
 
                     length = AR_gen.poll()*diam 
 
@@ -138,21 +115,16 @@ for mean_AR in AR_dist_means:
                             if not sim_mode:
                                 cel.children.append(newCell) #add it to the children list of its parent
                             temp.append(newCell) #add it to the temporary storage list
-
+                            if len(temp) > 0:
+                                max_single_cell_overlap = max([sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps), sum(max(temp, key=lambda cell: sum(cell.overlaps)).overlaps)])
+                            else:
+                                max_single_cell_overlap = sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps)
                             cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
                             cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList])
                             curr_numcells = len(cellList) + len(temp)
-                            worksheet.write(row, col, curr_numcells - 1)  # the cell number (rootcell is 0)
-                            worksheet.write(row, col+1, text_AoA)
-                            worksheet.write(row, col+2, mean_AR)
-                            worksheet.write(row, col+3, curr_numcells)
-                            worksheet.write(row, col+4, cumulativeOverlap)
-                            worksheet.write(row, col+5, cumulativeSquaredOverlap)
-                            worksheet.write(row, col+7, generation)
-                            if len(temp) > 0:
-                                worksheet.write(row, col+6, max([sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps), sum(max(temp, key=lambda cell: sum(cell.overlaps)).overlaps)]))
-                            else:
-                                worksheet.write(row, col+6, sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps))
+                            case = '%d,%f,%f,%d,%f,%f,%f,%d\n' % (curr_numcells - 1, mean_AoA, mean_AR, curr_numcells, cumulativeOverlap, cumulativeSquaredOverlap, max_single_cell_overlap, generation)
+                            fh.write(case)
+                            
                             row += 1
 
                         else:
@@ -163,36 +135,18 @@ for mean_AR in AR_dist_means:
                     cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
                     cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList])
 
-                    if cumulativeSquaredOverlap >= current_treshold:
-                        checker_index += 1
-                        if checker_index == len(cumulative_squared_overlap_thresholds):
-                            not_done = False
-                            break
-                        else:
-                            print "CHECKER INDEX:", checker_index
-                            print "length of threshold array:", len(cumulative_squared_overlap_thresholds)
-                            current_treshold = cumulative_squared_overlap_thresholds[checker_index]
-                            worksheet.write(row, col, mean_AoA)
-                            worksheet.write(row, col+1, mean_AR)
-                            worksheet.write(row, col+2, len(cellList) + len(temp))
-                            worksheet.write(row, col+3, cumulativeOverlap)
-                            worksheet.write(row, col+4, cumulativeSquaredOverlap)
-                            if len(temp) > 0:
-                                worksheet.write(row, col+5, max([sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps), sum(max(temp, key=lambda cell: sum(cell.overlaps)).overlaps)]))
-                            else:
-                                worksheet.write(row, col+5, sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps))
-                            row += 1
+                    if cumulativeSquaredOverlap >= overlap_squared_threshold:
+                        done = True
+                        fh.close()
+                        break
 
                 for cel in temp: #once the reproduction cycle is complete,
                     cellList.append(cel) #add all the newly created daughters in temp to the main cellList
 
-
             temp = []
             cellList = [] #if doing multiple trials, we need to reset these arrays before starting the next trial
 
-workbook.close()
-
-sys.exit()
+sys.exit(0)
 
 #if this is uncommented the program will exit when it is finished running, you wont have time to view the visual representation of the cluster
 #it's mostly only used when collecting data and not using the visual mode
