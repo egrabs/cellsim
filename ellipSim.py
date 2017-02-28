@@ -3,7 +3,6 @@ from math import *
 from cell import *
 from cellHelper import *
 import xlsxwriter as xls
-from multiprocessing import Process
 import numpy as np
 import random
 from random import gauss
@@ -29,7 +28,7 @@ overlapParam = 0.50  # float(input("Please input the maximum amount of overlap p
 
 diam = 5.0 #for now all cells will have a diameter of 5, the length will increase each generation if in ellipsoidal mode, in sphere mode it will remain constant
 
-iterationList = [i for i in range(1, numGens + 1)] #Use this method of looping to assign the cell generations
+# iterationList = [i for i in range(1, numGens + 1)] #Use this method of looping to assign the cell generations
 
 theta = pi / 4 #this defines the acceptable angles that daughter cells can spawn from
 
@@ -124,8 +123,6 @@ for mean_AR in AR_dist_means:
                             curr_numcells = len(cellList) + len(temp)
                             case = '%d,%f,%f,%d,%f,%f,%f,%d\n' % (curr_numcells - 1, mean_AoA, mean_AR, curr_numcells, cumulativeOverlap, cumulativeSquaredOverlap, max_single_cell_overlap, generation)
                             fh.write(case)
-                            
-                            row += 1
 
                         else:
                             cel.failedSpawns += 1
