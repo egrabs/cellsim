@@ -7,6 +7,7 @@ import numpy as np
 import random
 from random import gauss
 import sys
+import threading as td
 
 __author__ = "Elyes Graba"
 __credits__ = ["Peter Yunker", "Shane Jacobeen"]
@@ -17,7 +18,6 @@ __status__ = "Development"
 
 
 #Globals
-cellList = [] #a list of all the cell objects that currently exist
 
 #NOTE unused currently, no need for reproduction probablility
 doublingProb = 0.50 #for now we use a hard-coded doubling probability
@@ -30,7 +30,7 @@ diam = 5.0 #for now all cells will have a diameter of 5, the length will increas
 
 # iterationList = [i for i in range(1, numGens + 1)] #Use this method of looping to assign the cell generations
 
-theta = pi / 4 #this defines the acceptable angles that daughter cells can spawn from
+# theta = pi / 4 #this defines the acceptable angles that daughter cells can spawn from
 
 overlaps = 0 #to count the number of overlap cases
 
@@ -55,95 +55,121 @@ overlap_squared_threshold = 603504.
 AoA_STDEV = 0.0
 AR_STDEV = 0.0
 
-for mean_AR in AR_dist_means:
-    for mean_AoA in AoA_means:
+# nvm, I don't think this is needed because threads close themselves when their entered function returns
 
-        text_AoA = mean_AoA
+# class is_done:
+    
+#     def __init__(self):
+#         self.done = False
 
-        mean_AoA = eval(mean_AoA)
+# done = is_done()
 
-        AoA_gen = build_distribution_generator(mean_AoA, AoA_STDEV)
-        AR_gen = build_distribution_generator(mean_AR, AR_STDEV)
-
-        for trial_num in range(1,101):
-
-            csv_name = 'AR_%f_AoA_%f_trial_%d.csv' % (mean_AR, mean_AoA, trial_num)
-
-            fh = open(csv_name, 'w')
-
-            fh.write('cell_#,angle_of_attachment,aspect_ratio,number_of_cells,cumulative_overlap,cumulative_squared_overlap,max_overlap_of_single_cell,generation_#\n')
-
-            generation = 0
-
-            if sim_mode:
-                rootCell = construct_lightweight_cell_repr(vector(0,0,0), AR_gen.poll()*diam, diam, vector(1,2,3))
-            else:
-                rootCell = RootCell(vector(0,0,0), AR_gen.poll()*diam, diam, vector(1, 2, 3), None, 0) #The original cell, note that it has generation = 0
-
-            cellList.append(rootCell) #put the root cell in the cellList
+                
 
 
-            initial_case = '0,%f,%f,1,0,0,0,0\n' % (mean_AoA, mean_AR)
-            fh.write(initial_case)
+def main(mean_AR, mean_AoA, trial_num):
 
-            done = False
+    text_AoA = mean_AoA
 
-            while not done: #iterate until the max overlap threshold is reached
+    mean_AoA = eval(mean_AoA)
 
-                generation += 1
+    STDEV = 0.0
 
-                temp = [] #holds the newly created cells until the current round of reproduction is over
+    AoA_gen = build_distribution_generator(mean_AoA, STDEV)
+    AR_gen = build_distribution_generator(mean_AR, STDEV)
 
-                for cel in cellList: #for each cell currently in the cellList
+    cellList = [] #a list of all the cell objects that currently exist
 
-                    length = AR_gen.poll()*diam 
+    csv_name = 'AR_%f_AoA_%f_trial_%d.csv' % (mean_AR, mean_AoA, trial_num)
 
-                    variedTheta = AoA_gen.poll()
-                    (cellPos, direc) = getDaughterPos(cel, variedTheta, length)
+    fh = open(csv_name, 'w')
 
-                    if (cellPos,direc) != (None, None):
+    fh.write('cell_#,angle_of_attachment,aspect_ratio,number_of_cells,cumulative_overlap,cumulative_squared_overlap,max_overlap_of_single_cell,generation_#\n')
 
-                        if sim_mode:
-                            newCell = construct_lightweight_cell_repr(cellPos, length)
-                        else:
-                            newCell = Cell(cellPos, length, diam, direc, cel, generation) #create the daughter
+    generation = 0
 
-                        ovFail = checkOverlap(newCell, cellList, temp, overlapParam) #check if the daughter overlaps with any existing cells
+    if sim_mode:
+        rootCell = construct_lightweight_cell_repr(vector(0,0,0), AR_gen.poll()*diam, diam, vector(1,2,3))
+    else:
+        rootCell = RootCell(vector(0,0,0), AR_gen.poll()*diam, diam, vector(1, 2, 3), None, 0) #The original cell, note that it has generation = 0
 
-                        if (not ovFail): #if there is NOT an overlap above the chosen threshold, allow the daughter to exist
-                            if not sim_mode:
-                                cel.children.append(newCell) #add it to the children list of its parent
-                            temp.append(newCell) #add it to the temporary storage list
-                            if len(temp) > 0:
-                                max_single_cell_overlap = max([sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps), sum(max(temp, key=lambda cell: sum(cell.overlaps)).overlaps)])
-                            else:
-                                max_single_cell_overlap = sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps)
-                            cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
-                            cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList])
-                            curr_numcells = len(cellList) + len(temp)
-                            case = '%d,%f,%f,%d,%f,%f,%f,%d\n' % (curr_numcells - 1, mean_AoA, mean_AR, curr_numcells, cumulativeOverlap, cumulativeSquaredOverlap, max_single_cell_overlap, generation)
-                            fh.write(case)
+    cellList.append(rootCell) #put the root cell in the cellList
 
-                        else:
-                            cel.failedSpawns += 1
-                            # if not sim_mode:
-                                # newCell.graphical.visible = False #make the daughter disappear if it overlapped too much with an existing cell
+    initial_case = '0,%f,%f,1,0,0,0,0\n' % (mean_AoA, mean_AR)
+    fh.write(initial_case)
 
+    done = False
+
+    while not done: #iterate until the max overlap threshold is reached
+
+        generation += 1
+
+        temp = [] #holds the newly created cells until the current round of reproduction is over
+
+        for cel in cellList: #for each cell currently in the cellList
+
+            length = AR_gen.poll()*diam 
+
+            variedTheta = AoA_gen.poll()
+            (cellPos, direc) = getDaughterPos(cel, variedTheta, length)
+
+            if (cellPos,direc) != (None, None):
+
+                if sim_mode:
+                    newCell = construct_lightweight_cell_repr(cellPos, length)
+                else:
+                    newCell = Cell(cellPos, length, diam, direc, cel, generation) #create the daughter
+
+                ovFail = checkOverlap(newCell, cellList, temp, overlapParam) #check if the daughter overlaps with any existing cells
+
+                if (not ovFail): #if there is NOT an overlap above the chosen threshold, allow the daughter to exist
+                    if not sim_mode:
+                        cel.children.append(newCell) #add it to the children list of its parent
+                    temp.append(newCell) #add it to the temporary storage list
+                    if len(temp) > 0:
+                        max_single_cell_overlap = max([sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps), sum(max(temp, key=lambda cell: sum(cell.overlaps)).overlaps)])
+                    else:
+                        max_single_cell_overlap = sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps)
                     cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
                     cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList])
+                    curr_numcells = len(cellList) + len(temp)
+                    case = '%d,%f,%f,%d,%f,%f,%f,%d\n' % (curr_numcells - 1, mean_AoA, mean_AR, curr_numcells, cumulativeOverlap, cumulativeSquaredOverlap, max_single_cell_overlap, generation)
+                    fh.write(case)
 
-                    if cumulativeSquaredOverlap >= overlap_squared_threshold:
-                        done = True
-                        fh.close()
-                        break
+                else:
+                    cel.failedSpawns += 1
+                    # if not sim_mode:
+                        # newCell.graphical.visible = False #make the daughter disappear if it overlapped too much with an existing cell
 
-                for cel in temp: #once the reproduction cycle is complete,
-                    cellList.append(cel) #add all the newly created daughters in temp to the main cellList
+            cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
+            cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList])
 
-            temp = []
-            cellList = [] #if doing multiple trials, we need to reset these arrays before starting the next trial
+            if cumulativeSquaredOverlap >= overlap_squared_threshold:
+                done = True
+                fh.close()
+                break
 
-sys.exit(0)
+        for cel in temp: #once the reproduction cycle is complete,
+            cellList.append(cel) #add all the newly created daughters in temp to the main cellList
 
-#if this is uncommented the program will exit when it is finished running, you wont have time to view the visual representation of the cluster
-#it's mostly only used when collecting data and not using the visual mode
+    temp = []
+    cellList = [] #if doing multiple trials, we need to reset these arrays before starting the next trial
+
+    return
+
+
+for mean_AR in AR_dist_means:
+    for mean_AoA in AoA_means:
+        for trial_num in range(1,101):
+            while True:
+                # loop until a thread terminates and we have room to spawn another
+                if td.active_count() < 30:
+                    thread = td.Thread(group=None, target=main, name=None, args=(mean_AR, mean_AoA, trial_num), kwargs={})
+                    thread.start()
+                    break
+
+while True:
+    # loop until all threads terminate, then we can exit
+    if td.active_count() == 0:
+        sys.exit(0)
+
