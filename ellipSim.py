@@ -39,12 +39,18 @@ sim_mode = True if raw_input("Run in sim mode? (faster with no visual rendering)
 
 
 #aspect ratio disitrbution means
-AR_dist_means = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+
+# AR_dist_means = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
+
+AR_dist_means = [2.0]
 #aspect ratio distribution standard deviations
 AR_dist_STDEVs = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5]
 
 # angle of attachment distribution means
-AoA_means = ['pi/6.', 'pi/5.', 'pi/4.', 'pi/3.', 'pi/2.']
+
+# AoA_means = ['pi/6.', 'pi/5.', 'pi/4.', 'pi/3.', 'pi/2.']
+AoA_means = ['pi/3.', 'pi/2.']
+
 # angle of attachment distribution standard deviations will be computed "live"
 # by multiplying these fractional values times the actual AoA value
 AoA_fractional_STDEVs = [0.0, 0.05, 0.10, 0.15, 0.20]

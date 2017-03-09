@@ -18,6 +18,7 @@ def max_numcells(frame, thresholds):
 		for i in range(num_records):
 			num_cells = frame[i: i+1].number_of_cells
 			cumulative_squared_overlap = frame[i: i+1].cumulative_squared_overlap
+			if cumulative_squared_overlap 
 
 AR_dist_means = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
 
