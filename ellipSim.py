@@ -26,7 +26,8 @@ print("Welcome to the cell simulator v2.0")
 
 overlapParam = 0.50  # float(input("Please input the maximum amount of overlap permitted before reproduction fails: ")) #grab the overlap parameter from the user
 
-diam = 5.0 #for now all cells will have a diameter of 5, the length will increase each generation if in ellipsoidal mode, in sphere mode it will remain constant
+#old Diam
+cellVolume = 550
 
 # iterationList = [i for i in range(1, numGens + 1)] #Use this method of looping to assign the cell generations
 
@@ -93,10 +94,16 @@ def main(mean_AR, mean_AoA, trial_num):
 
     generation = 0
 
+    circRad, longAxRad = getCellDimensions(mean_AR, cellVolume)
+
+    circDiam = circRad * 2
+    longAxDiam = longAxRad * 2
+
     if sim_mode:
-        rootCell = construct_lightweight_cell_repr(vector(0,0,0), AR_gen.poll()*diam, diam, vector(1,2,3))
+        rootCell = construct_lightweight_cell_repr(vector(0,0,0), longAxDiam, circDiam, vector(1,2,3))
     else:
-        rootCell = RootCell(vector(0,0,0), AR_gen.poll()*diam, diam, vector(1, 2, 3), None, 0) #The original cell, note that it has generation = 0
+
+        rootCell = RootCell(vector(0,0,0), longAxDiam, circDiam, vector(1, 2, 3), None, 0) #The original cell, note that it has generation = 0
 
     cellList.append(rootCell) #put the root cell in the cellList
 
@@ -135,8 +142,8 @@ def main(mean_AR, mean_AoA, trial_num):
                         max_single_cell_overlap = max([sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps), sum(max(temp, key=lambda cell: sum(cell.overlaps)).overlaps)])
                     else:
                         max_single_cell_overlap = sum(max(cellList, key=lambda cell:sum(cell.overlaps)).overlaps)
-                    cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
-                    cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList])
+                    cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList] + [sum(zellT.overlaps) for zellT in temp])
+                    cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList] + [sum(zellT.overlaps)**2 for zellT in temp])
                     curr_numcells = len(cellList) + len(temp)
                     case = '%d,%f,%f,%d,%f,%f,%f,%d\n' % (curr_numcells - 1, mean_AoA, mean_AR, curr_numcells, cumulativeOverlap, cumulativeSquaredOverlap, max_single_cell_overlap, generation)
                     fh.write(case)
@@ -146,8 +153,8 @@ def main(mean_AR, mean_AoA, trial_num):
                     # if not sim_mode:
                         # newCell.graphical.visible = False #make the daughter disappear if it overlapped too much with an existing cell
 
-            cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList])
-            cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList])
+            cumulativeOverlap = sum([sum(zell.overlaps) for zell in cellList] + [sum(zellT.overlaps) for zellT in temp])
+            cumulativeSquaredOverlap = sum([sum(zell.overlaps)**2 for zell in cellList] + [sum(zellT.overlaps)**2 for zellT in temp])
 
             if cumulativeSquaredOverlap >= overlap_squared_threshold:
                 done = True

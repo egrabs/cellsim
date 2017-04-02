@@ -290,6 +290,46 @@ def computeRadGy(cellList):
     return (1.0 / numCells) * sum(distList) #sum the list and multiply by 1/numcells to get the radius of gyration
 
 
+
+# for ellipsoid of dimensions (a,b,c) its volume is given by:
+#
+#                    V = (4*pi/3)*(abc)
+#
+
+
+def cellVolume(diameter, length):
+    a = b = (diameter / 2.)
+    c = (length / 2.)
+    volume = (4.*pi / 3.)*(a*b*c)
+    return volume
+
+
+
+# a,b,c are radii of 3D ellipsoid
+# for cells a = b = the radius of the circular cross section (cells are circular ellipsoid)
+# 
+# c is the length of the longest axis of the ellipsoid divided by 2
+#
+# aspectRatio = a / b
+# volume = (4pi/3)*abc
+# 
+# a = aspectRatio*b
+# 
+# aspectRatio*b^3 = volume 
+# 
+# 
+# 
+
+def getCellDimensions(aspectRatio, volume):
+    aSquaredc = volume * (3.) / (4. * pi)
+    Arb3 = abSquared
+    a3 = abSquared / aspectRatio
+    a = math.pow(b3, (1. / 3.))
+    c = aspectRatio*b
+    return (a, c)
+
+
+
 '''this function takes a vector, an axis (also a vector) and an angle (in radians) by which to rotate the vector about the axis, and returns the rotated vector'''
 def rotateVec(vector, axis, theta):
 
