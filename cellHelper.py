@@ -11,6 +11,7 @@ __maintainer__ = "Elyes Graba"
 __email__ = "elyesgraba@gatech.edu"
 __status__ = "Development"
 
+
 def exportAsOpenSCAD(cellList, aspectRatio):
 
     fileNumber = 0
@@ -107,18 +108,19 @@ def build_aspect_ratio_distributions(filenames):
     distributions = []
     for filename in filenames:
         fh = open(filename, 'r')
-        header = fh.readline()
-        line = fh.readline()
-        distribution = []
-        while line != '':
-            distribution.append(float(line))
-            line = fh.readline()
-        distributions.append(distribution)
+        buf = fh.read()
+        valuesAsStr = buf.split('\n')
+        valuesAsFloat = map(lambda x: float(x), valuesAsStr)
+        distributions.append(valuesAsFloat)
         fh.close()
     return distributions
 
 
+# INPUTS: distribution -- iterable of aspect ratio values
+# 
+# RETURNS: a randomly selected aspect ratio
 def select_aspect_ratio(distribution):
+    # assuming distribution is uniform, of course
     return random.choice(distribution)
 
 
@@ -130,6 +132,7 @@ def removeCellsAbove(ceil, cellList):
                 cellList.remove(daughter)
             cellList.remove(cel)
 
+
 '''Removes the cells below a certain z coordinate : floor'''
 def removeCellsBelow(floor, cellList):
     for cel in cellList:
@@ -138,13 +141,23 @@ def removeCellsBelow(floor, cellList):
                 cellList.remove(daughter)
             cellList.remove(cel)
 
+
+class OPException(Exception):
+
+    def __init__(self, val):
+        self.val = val
+
+    def __str__(self):
+        return repr(self.val)
+
+
 '''checks if two cells overlap more than permitted by the specified overlapAmnt'''
 def overlaps(cellOne, cellTwo, overlapAmnt):
 
     doesOverlap = False
 
     if overlapAmnt < 0 or overlapAmnt > 1: #make sure we have a valid overlap parameter
-        return None
+        raise OPException('Invalid Overlap Parameter')
 
     for sphereOne in cellOne.sphereMesh:
         for sphereTwo in cellTwo.sphereMesh:
@@ -160,6 +173,7 @@ def overlaps(cellOne, cellTwo, overlapAmnt):
 
     return False
 
+
 '''checks overlap for a certain cell against all others in the network'''
 def checkOverlap(currCell, cellList, temp, overlapAmnt):
 
@@ -168,6 +182,7 @@ def checkOverlap(currCell, cellList, temp, overlapAmnt):
             if overlaps(currCell, cel, overlapAmnt):
                 return True
     return False
+
 
 '''Computes the radius of gyration for the given cell network'''
 def computeRadGy(cellList):
@@ -188,6 +203,49 @@ def computeRadGy(cellList):
         distList.append((mag(cel.pos - meanPos))**2) #add the magnitude squared of the diff btwn each cell's position and the mean to a list
 
     return (1.0 / numCells) * sum(distList) #sum the list and multiply by 1/numcells to get the radius of gyration
+
+
+# for ellipsoid of dimensions (a,b,c) its volume is given by:
+#
+#                    V = (4*pi/3)*(abc)
+#
+
+def cellVolumeDimensions(diameter, length):
+    a = b = (diameter / 2.)
+    c = (length / 2.)
+    volume = (4.*pi / 3.)*(a*b*c)
+    return volume
+
+
+def cellVolumeAxes(semiminor, semimajor):
+    a = b = semiminor
+    c = semimajor
+    volume = (4.*pi / 3.)*(a*b*c)
+    return volume
+
+
+# a,b,c are radii of 3D ellipsoid
+# for cells a = b = the radius of the circular cross section (cells are circular ellipsoid)
+# 
+# c is half length of the long axis of the ellipsoid
+#
+# aspectRatio = c / a
+# volume = (4pi/3)*abc
+# 
+# c = a * aspectRatio
+# 
+#
+# RETURNS: (a, c) where a is cross sectional radius (semiminor axis) and c is semimajor axis 
+# 
+# 
+
+def getCellDimensions(aspectRatio, volume):
+    aSquaredc = volume * ( (3.) / (4. * pi) )
+    aCubed = aSquaredc / aspectRatio
+    a = math.pow(aCubed, (1. / 3.) )
+    c = aspectRatio*a
+    # round each to 2 decimal places
+    return ( round(a, 2), round(c, 2) )  
 
 
 '''this function takes a vector, an axis (also a vector) and an angle (in radians) by which to rotate the vector about the axis, and returns the rotated vector'''
@@ -211,6 +269,7 @@ def rotateVec(axis, vector, theta):
 
     return vRotated
 
+
 '''Finds the position and axis of a daughter cell given the parent and an angle of attachment'''
 
 def getDaughterPos(cel, theta, length):
@@ -231,8 +290,7 @@ def getDaughterPos(cel, theta, length):
     with 3 random components, cross it with the parent's axis, and the resulting vector will be the desired random radial direction'''
 
 
-    if (len(cel.children) == 0 and cel.generation != 0 and random.random() < 0.80):                  #there was a 50% probability here for this style of reproduction -- don't forget
-
+    if (len(cel.children) == 0 and cel.generation != 0 and random.random() < 0.80):
 
         childAxis = norm(cel.axis)
 
@@ -242,12 +300,10 @@ def getDaughterPos(cel, theta, length):
 
         return (dispVector, childAxis)
 
-
-
     else:
-        majAxSquared = (cel.length / 2.0)**2                                                #major axis of cell squared
+        majAxSquared = (cel.length / 2.0)**2. # major axis of cell squared
 
-        tanThetSquared = (tan(theta))**2                                                            #tangent of attatchent angle squared
+        tanThetSquared = (tan(theta))**2. # tangent of attatchent angle squared
 
         radSquared = (cel.diameter / 2.0)**2                                                    #the radius of the largest cross-sectional circle squared
 
@@ -271,12 +327,14 @@ def getDaughterPos(cel, theta, length):
 
         return (newPos, relativePos)                                                                 #(position, axis)
 
+
 '''Incorporates some ranom
 dom variance into the angle of attachment'''
 def computeVariedTheta(theta, variance):
     #theta = theta +- random(-1,1)*thetaVariance*theta
     newTheta = theta + random.uniform(-1,1)*variance*theta
     return newTheta
+
 
 '''Sets all objects to be invisible and removes all references to them to free them for garbage collection'''
 def clearScene(visualScene): #removes all of the objects in the scene from the main memory storage that Vpython keeps them in
