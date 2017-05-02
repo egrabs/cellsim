@@ -97,6 +97,8 @@ def create_cell_string(cell, write_label_string=False):
 
 def output_cell_file(cell_list, filename):
     fh = open(filename, 'w')
+    fh.write(create_cell_string(None, write_label_string=True))
+    fh.write('\n')
     for cell in cell_list:
         cell_string = create_cell_string(cell)
         fh.write(cell_string)
